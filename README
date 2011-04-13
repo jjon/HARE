@@ -1,0 +1,60 @@
+HARE: Historical Aggregated Resource Environment
+
+MOTIVATION PROCEEDS FROM ACTION
+
+There are any number of social relationships that are not simple binary relationships like mother/son, or lord/vassal. They are well known in modern society, but my aim is to model such relationships as they appear in medieval historical records. Among such relations are these:
+
+compadrazgo
+co-parenthood
+godparenthood
+fosterage
+milk-brotherhood
+paréage
+wardship
+hostageship
+ecclesiastical nephew
+surety generally
+
+
+For the purposes of this exercise. I have data concerning a complex hostage exchange. Hostageship is a ternary relationship and this pattern characterizes a number of other relationships as well, notably wardship.
+
+The aim is to explore the ways in which such relationships can be modeled, stored, and visualized.
+
+Some of the desiderata for the final result:
+
+	• It must be possible to annotate the relation with:
+		- bibliographical information: relations don't exist apart from the sources they are attested in
+		- temporal data: relations hold only within a given span of time
+		- geographical data: relations hold within geographical contexts
+	
+	• It must be possible to get a graphical visualization of the relation or some small graph of such relations
+		
+	• It should be possible to discover data (via web api, especially dbpedia and freebase) associated with any element of the relation and add it to the graph.
+	
+	• It should be possible to define and output in a useful format the schema used to model the relation so that it can be shared with others with similar data. This will probably take the form of an RDF/OWL ontology or an SQL Entity Relationship Diagram.
+
+A pretty goddam near random list of stuff that might be useful:
+
+rdflib 
+: for manipulating and querying RDF triples
+
+SuRF
+: SuRF is an Object RDF Mapper (ORM), similar in concept to Object Relational Mappers like SQLAlchemy.
+
+NetworkX
+: a Python package for the creation, manipulation, and study of the structure, dynamics, and functions of complex networks
+
+visualization
+	javaScript/HTML5 canvas
+	pydot for bubbles and arrows vsualization
+
+storage
+	SQL
+	: sqlite for ease of use.
+	4store
+	: scalable RDF storage.
+	neo4j
+	: open source nosql graph database
+	
+	
+What I'm looking for, essentially, is an ontology for the domain of medieval British historical records that can describe the kind of social relationships refered to therein, a programmatic framework in which that data can be manipulated and shared
