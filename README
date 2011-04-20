@@ -77,3 +77,20 @@ British historical records that can describe the kind of social relationships
 refered to therein, a programmatic framework in which that data can be queried
 manipulated and shared, and some kind of visualization engine that can generate
 node and edge graphics that can usefully be browsed
+
+
+# log:
+succeeded in generating a truncated form of the target visualization using pydot see rdflib_dot_testingII.py
+
+succeeded in installing networkx and used it in conjunction with pydot to generate a version of the same thing:
+
+nx graph from a dot file:
+>>> g = nx.read_dot('/Users/jjc/Desktop/tempdot_fromdot')
+
+generate pydot from nx graph:
+>>> g_pydot = nx.to_pydot(g)
+
+then write to svg:
+>>> g_pydot.write_svg('~/Desktop/temp3.svg')
+
+Now working on digging the data out of rdflib and generating some native python data structures to experiment with (see: rdflib2nativepy.py). It's becoming clear to me that rdf is not a data format anyone wants to play with natively. It makes better sense to work with other graph data structures and output rdf if needed
