@@ -28,8 +28,11 @@ def isResourceOfType(graph, uri, resource_type):
     """
     return resource_type in graph.objects(uri,rdf['type'])
 
-def resourceType(graph, uri, resource_type):
-    return graph.objects(uri,rdf['type']).next()
+def resourceType(graph, uri):
+    if isResource(graph,uri):
+        return graph.objects(uri,rdf['type']).next()
+    else:
+        return None
 
 
 
@@ -130,23 +133,38 @@ d.set_node_defaults(shape="box")
 
 
 # people = list(tgraph.subjects(rdf['type'], pome['Person']))##not using this
-exchanges = list(tgraph.subjects(rdf['type'],pome['NaryRelation']))
+# exchanges = list(tgraph.subjects(rdf['type'],pome['NaryRelation']))
+
+relations = [pome['NaryRelation'], pome['Person'], pome['Place']]
+focus_properties = [pome['hostage'], pome['pledge']]
 
 
-def addNodesAndSubgraphs(rdfgraph, relation, resource_type, focus, dotgraph):
-    """
-    This breaks when resource type is other than Person.
-    Add try/except? and/or figure out how to make the third
-    and fourth arguments sequences and do the right thing
-    for any resource_type and property. use resourceType()
-    """
-    properties = list(rdfgraph.predicate_objects(relation))
-    print properties
+ralph = URIRef('file:///Users/jjc/Documents/Dissertation/Notes/1233HostageDeal/modelTesting/hostages11.n3#Mortimer_Ralph_d_1247')
+subg = Graph()
+
+def walkGraph(graph,start,subGraph) :
+    try :
+        for (p,o) in graph.predicate_objects(start):
+            if (start,p,o) not in subGraph and (pome['Person'] in graph.objects(o,None) or pome['NaryRelation'] in graph.objects(o,None)):
+                subGraph.add((start,p,o))
+                walkGraph(graph,o,subGraph)
+    except :
+        pass
+        
+walkGraph(tgraph, ralph, subg)
+print subg.serialize(format='n3')
+
+def addNodesAndSubgraphs(rdfgraph, uri, resource_type, focus, dotgraph):
+    if resourceType(rdfgraph,uri) in resource_type:
+        #print resourceType(rdfgraph,uri)
+        properties = list(rdfgraph.predicate_objects(uri))
+
     ## Generate dotgraph nodes
     nodes = []
     for prop in properties:
-        if isResourceOfType(rdfgraph, prop[1], resource_type):
-            if prop[0] == focus:
+        if resourceType(rdfgraph,prop[1]) in resource_type:
+            if prop[0] in focus:
+                #print prop[0], prop[1].encode('utf-8')
                 nodes.append(
                     pydot.Node( rdfgraph.qname(prop[1]).encode('utf-8'),
                                 focus=True,
@@ -156,6 +174,7 @@ def addNodesAndSubgraphs(rdfgraph, relation, resource_type, focus, dotgraph):
                                )
                 )
             else:
+                
                 nodes.append(
                     pydot.Node( rdfgraph.qname(prop[1]).encode('utf-8'),
                                 style="filled",
@@ -164,22 +183,20 @@ def addNodesAndSubgraphs(rdfgraph, relation, resource_type, focus, dotgraph):
                                 rdfprop=str(rdfgraph.qname(prop[0])).split(":")[1]
                                )
                 )
-    
+        else:
+            continue
+            
     for node in nodes:
         if node.get_name() not in dotgraph.obj_dict['nodes'].keys():
             dotgraph.add_node(node)
-
-    ## Add subgraph
-    sg1 = pydot.Subgraph(graph_name="sg1")
-    dotgraph.add_subgraph(sg1)
     
     ## Add edges
     focus_node = [n for n in nodes if 'focus' in n.get_attributes()][0]
     peripheral_nodes = [n for n in nodes if 'focus' not in n.get_attributes()]
     
     for node in peripheral_nodes:
-        #print node.get_attributes()['rdfprop']
-        sg1.add_edge(
+    
+        d.add_edge(
             pydot.Edge(
                 (node, focus_node),
                 taillabel=node.get_attributes()['rdfprop'],
@@ -187,8 +204,9 @@ def addNodesAndSubgraphs(rdfgraph, relation, resource_type, focus, dotgraph):
             )
         )
     
-for exchange in exchanges:
-    addNodesAndSubgraphs(tgraph, exchange, pome['Person'], pome['hostage'], d)
+
+for s in list(subg.subjects()):
+    addNodesAndSubgraphs(tgraph, s, relations, focus_properties, d)
 
 
 #### Output ####
