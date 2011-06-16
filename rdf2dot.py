@@ -16,7 +16,7 @@ def pairs(lst):
     for item in i:
         yield prev, item
         prev = item
-    yield item, first
+    #yield item, first
 
 def isResource(graph, uri):
     return rdf['type'] in graph.predicates(uri)
@@ -126,18 +126,9 @@ tgraph.parse("/Users/jjc/Documents/Dissertation/Notes/1233HostageDeal/modelTesti
 # """), format="n3")
 
 
-
-#### create Dot graph via pydot ####
+#### create empty Dot graph via pydot ####
 d = pydot.Dot(graph_name="testgraph", graph_type="digraph", strict=True, suppress_disconnected=False, rankdir="TB")
 d.set_node_defaults(shape="box")
-
-
-# people = list(tgraph.subjects(rdf['type'], pome['Person']))##not using this
-# exchanges = list(tgraph.subjects(rdf['type'],pome['NaryRelation']))
-
-relations = [pome['NaryRelation'], pome['Person'], pome['Place']]
-focus_properties = [pome['hostage'], pome['pledge']]
-
 
 ralph = URIRef('file:///Users/jjc/Documents/Dissertation/Notes/1233HostageDeal/modelTesting/hostages11.n3#Mortimer_Ralph_d_1247')
 subg = Graph()
@@ -152,61 +143,115 @@ def walkGraph(graph,start,subGraph) :
         pass
         
 walkGraph(tgraph, ralph, subg)
-print subg.serialize(format='n3')
 
-def addNodesAndSubgraphs(rdfgraph, uri, resource_type, focus, dotgraph):
-    if resourceType(rdfgraph,uri) in resource_type:
-        #print resourceType(rdfgraph,uri)
-        properties = list(rdfgraph.predicate_objects(uri))
+walkGraph_resources = []
+for x,y in subg.subject_objects():
+    walkGraph_resources.append(x)
+    walkGraph_resources.append(y)
+
+
+### Parameters: resources and properties we're interested in ###
+relations = [pome['Person'], pome['Place']]
+focus_properties = [pome['hostage'], pome['pledge']]
+
+
+### Generate nodes and edges ###
+def nodes_edges(rdfgraph, uri, dotgraph):
+    n = pydot.Node( rdfgraph.qname(uri).encode('utf-8'),
+                label=rdfgraph.qname(uri).encode('utf-8')
+               )
+    if n.get_name() not in dotgraph.obj_dict['nodes'].keys():
+        dotgraph.add_node(n)
+
+    properties = [(p,o) for p,o in rdfgraph.predicate_objects(uri) if resourceType(tgraph,o) in relations]
+
+    for p,o in properties:
+        dotgraph.add_edge(
+            pydot.Edge(
+                (n.get_name(),rdfgraph.qname(o).encode('utf-8')),
+                taillabel=rdfgraph.qname(p).split(":")[1].encode('utf-8'),
+                fontsize="9pt"
+            )
+        )
+
+
+### Generate nodes and edges for subjects with multiple objects of interest ###
+def nary_nodes_edges(rdfgraph, uri, dotgraph):
+    properties = list(rdfgraph.predicate_objects(uri))
 
     ## Generate dotgraph nodes
     nodes = []
     for prop in properties:
-        if resourceType(rdfgraph,prop[1]) in resource_type:
-            if prop[0] in focus:
-                #print prop[0], prop[1].encode('utf-8')
-                nodes.append(
-                    pydot.Node( rdfgraph.qname(prop[1]).encode('utf-8'),
-                                focus=True,
-                                style="filled",
-                                fillcolor="#cc99cc",
-                                label=rdfgraph.qname(prop[1]).encode('utf-8')
-                               )
-                )
-            else:
-                
-                nodes.append(
-                    pydot.Node( rdfgraph.qname(prop[1]).encode('utf-8'),
-                                style="filled",
-                                fillcolor="#cccc99",
-                                label=rdfgraph.qname(prop[1]).encode('utf-8'),
-                                rdfprop=str(rdfgraph.qname(prop[0])).split(":")[1]
-                               )
-                )
-        else:
-            continue
-            
+        if prop[0] in focus_properties and resourceType(tgraph,prop[1]) in relations:
+            #print prop
+            n = pydot.Node( rdfgraph.qname(prop[1]).encode('utf-8'),
+                        focus=True,
+                        label=rdfgraph.qname(prop[1]).encode('utf-8')
+                       )
+            nodes.append(n)
+        elif resourceType(tgraph,prop[1]) in relations:
+            n = pydot.Node( rdfgraph.qname(prop[1]).encode('utf-8'),
+                        label=rdfgraph.qname(prop[1]).encode('utf-8'),
+                        rdfprop=str(rdfgraph.qname(prop[0])).split(":")[1]
+                       )
+            nodes.append(n)
+                            
     for node in nodes:
         if node.get_name() not in dotgraph.obj_dict['nodes'].keys():
             dotgraph.add_node(node)
+            
     
     ## Add edges
-    focus_node = [n for n in nodes if 'focus' in n.get_attributes()][0]
+    focus_node = [n for n in nodes if 'focus' in n.get_attributes()] # this is going to fail when there's no focus node
     peripheral_nodes = [n for n in nodes if 'focus' not in n.get_attributes()]
     
     for node in peripheral_nodes:
-    
+        
         d.add_edge(
             pydot.Edge(
-                (node, focus_node),
+                (node, focus_node[0]),
                 taillabel=node.get_attributes()['rdfprop'],
                 fontsize="9pt"
             )
         )
-    
 
-for s in list(subg.subjects()):
-    addNodesAndSubgraphs(tgraph, s, relations, focus_properties, d)
+###### Generate Dot Graph ######
+for sub in tgraph.subjects():
+#     if resourceType(tgraph,sub) == pome['NaryRelation']:
+#         nary_nodes_edges(tgraph, sub, d)
+#     if resourceType(tgraph,sub) in relations:
+#         nodes_edges(tgraph, sub, d)
+
+#### or, just the resources in the result of walkGraph:
+    if sub in set(walkGraph_resources):
+        if resourceType(tgraph,sub) == pome['NaryRelation']:
+            nary_nodes_edges(tgraph, sub, d)
+        if resourceType(tgraph,sub) in relations:
+            nodes_edges(tgraph, sub, d)
+            
+##### manipulate dotgraph after generating: color nodes and set other properties:
+for x in d.get_edges():
+    if x.get_taillabel() in ['hostageGiver','pledgeGiver']:
+        n = d.get_node(x.get_source())[0]
+        n.set_style("filled")
+        n.set_fillcolor("#cc99cc")
+        n = d.get_node(x.get_destination())[0]
+        n.set_style("filled")
+        n.set_fillcolor("red")
+    if x.get_taillabel() in ['custodyHolder','hostageHolder']:
+        n = d.get_node(x.get_source())[0]
+        n.set_style("filled")
+        n.set_fillcolor("#99cccc")
+
+# d.add_edge(pydot.Edge("Henry_III", "Ralph_fitz_Nicholas", color="blue", label="steward of the household"))
+# d.add_edge(pydot.Edge("Henry_III", "Segrave_Stephen_d_1241", color="blue", label="justiciar"))
+# d.add_edge(pydot.Edge("Henry_III", "Peter_fitz_Herbert", color="blue", label="tenant in chief"))
+# d.add_edge(pydot.Edge("Henry_III", "Thomas_Corbet", color="blue", label="tenant in chief"))
+# d.add_edge(pydot.Edge("Henry_III", "Mortimer_Ralph_d_1247", color="blue", label="tenant in chief"))
+# d.add_edge(pydot.Edge("Henry_III", "Hugh_Despenser", color="blue", label="tenant in chief"))
+# d.add_edge(pydot.Edge("Henry_III", "Lacy_Walter_de_d_1241", color="blue", label="tenant in chief"))
+# d.add_edge(pydot.Edge("Henry_III", "Engelard_de_Cigogné", color="blue", label="mercenary captain"))
+
 
 
 #### Output ####
@@ -214,7 +259,22 @@ for s in list(subg.subjects()):
 d.write_dot('/Users/jjc/Desktop/propgraph.dot', prog='dot')
 #d.write_svg('/Users/jjc/Desktop/propgraph.svg')
 
-############# Notes ###############rdflib.term.URIRef('http://prosopOnto.medieval.england/2006/04/pome#hostage'
+############# Notes 
+
+###### This indescriminately adds all nodes and edges to the dot graph -> rats nest ######
+# for s,p,o in tgraph.triples((None,None,None)):
+#     sub = pydot.Node(tgraph.qname(s).encode('utf-8'))
+#     d.add_node(sub)
+#     try:
+#         obj = pydot.Node(str(tgraph.qname(o).encode('utf-8')))
+#         d.add_node(obj)
+#     except:
+#         obj = pydot.Node(o.encode('utf-8'))
+#         d.add_node(obj)
+#     d.add_edge(pydot.Edge((sub,obj), label=tgraph.qname(p).encode('utf-8').replace(":", "_")))
+
+
+###############rdflib.term.URIRef('http://prosopOnto.medieval.england/2006/04/pome#hostage'
 # for ex in exchanges:
 #     if pome['hostage'] in tgraph.predicates(ex):
 #         persons = tgraph.objects(ex) ## trying to identify the person objects and get person predicate objects for them to put in the tool tip
@@ -245,14 +305,6 @@ d.write_dot('/Users/jjc/Desktop/propgraph.dot', prog='dot')
         
 
 # d.add_node(pydot.Node("Henry_III"))
-# d.add_edge(pydot.Edge("Henry_III", "Ralph_fitz_Nicholas", color="blue", label="steward of the household"))
-# d.add_edge(pydot.Edge("Henry_III", "Segrave_Stephen_d_1241", color="blue", label="justiciar"))
-# d.add_edge(pydot.Edge("Henry_III", "Peter_fitz_Herbert", color="blue", label="tenant in chief"))
-# d.add_edge(pydot.Edge("Henry_III", "Thomas_Corbet", color="blue", label="tenant in chief"))
-# d.add_edge(pydot.Edge("Henry_III", "Mortimer_Ralph_d_1247", color="blue", label="tenant in chief"))
-# d.add_edge(pydot.Edge("Henry_III", "Hugh_Despenser", color="blue", label="tenant in chief"))
-# d.add_edge(pydot.Edge("Henry_III", "Lacy_Walter_de_d_1241", color="blue", label="tenant in chief"))
-# d.add_edge(pydot.Edge("Henry_III", "Engelard_de_Cigogné", color="blue", label="mercenary captain"))
 # 
 
 #print d.to_string()
