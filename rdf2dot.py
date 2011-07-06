@@ -1,6 +1,8 @@
 #!/opt/local/bin/python
 # -*- coding: utf-8 -*- #
 
+##yay! fixed that stupid encoding problem with sitecustomize.py. no more .encode('utf-8') calls!
+
 from rdflib import Graph, Namespace, URIRef, Literal, BNode
 import pydot
 
@@ -27,8 +29,24 @@ tgraph.parse("/Users/jjc/Documents/Dissertation/Notes/1233HostageDeal/modelTesti
 d = pydot.Dot(graph_name="testgraph", graph_type="digraph", strict=True, suppress_disconnected=False, rankdir="TB")
 d.set_node_defaults(shape="box")
 
-#### set starting node for and empty rdflib Graph() for walkGraph() to populate
+#### set starting nodes, and empty rdflib Graph() for walkGraph() to populate
 ralph = URIRef('file:///Users/jjc/Documents/Dissertation/Notes/1233HostageDeal/modelTesting/hostages11.n3#Mortimer_Ralph_d_1247')
+
+stutevill = URIRef('file:///Users/jjc/Documents/Dissertation/Notes/1233HostageDeal/modelTesting/hostages11.n3#William_de_Stutevill')
+
+henry = URIRef('file:///Users/jjc/Documents/Dissertation/Notes/1233HostageDeal/modelTesting/hostages11.n3#Henry_III')
+
+engelard = URIRef('file:///Users/jjc/Documents/Dissertation/Notes/1233HostageDeal/modelTesting/hostages11.n3#Engelard_de_Cigogné')
+
+segrave = URIRef('file:///Users/jjc/Documents/Dissertation/Notes/1233HostageDeal/modelTesting/hostages11.n3#Segrave_Stephen_d_1241')
+
+wmgamages = URIRef('file:///Users/jjc/Documents/Dissertation/Notes/1233HostageDeal/modelTesting/hostages11.n3#William_de_Gamages')
+
+walter = URIRef('file:///Users/jjc/Documents/Dissertation/Notes/1233HostageDeal/modelTesting/hostages11.n3#Beauchamp_Walter_de')
+
+warwickcastle = URIRef('file:///Users/jjc/Documents/Dissertation/Notes/1233HostageDeal/modelTesting/hostages11.n3#Warwick_Castle')
+
+
 subg = Graph()
 
 #### Parameters: resources and properties we're interested in ###
@@ -73,8 +91,10 @@ for x,y in subg.subject_objects():
 ### Generate nodes and edges ###
 def nodes_edges(rdfgraph, uri, dotgraph):
     ## Generate dotgraph nodes for the resources we're interested in
-    n = pydot.Node( rdfgraph.qname(uri).encode('utf-8'),
-                label=rdfgraph.qname(uri).encode('utf-8')
+    n = pydot.Node( rdfgraph.qname(uri),
+                label=rdfgraph.qname(uri),
+                height='0',
+                fontsize="12"
                )
     if n.get_name() not in dotgraph.obj_dict['nodes'].keys():
         dotgraph.add_node(n)
@@ -85,9 +105,10 @@ def nodes_edges(rdfgraph, uri, dotgraph):
     for p,o in properties:
         dotgraph.add_edge(
             pydot.Edge(
-                (n.get_name(),rdfgraph.qname(o).encode('utf-8')),
-                taillabel=rdfgraph.qname(p).split(":")[1].encode('utf-8'),
-                fontsize="9pt"
+                (n.get_name(),rdfgraph.qname(o)),
+                taillabel=rdfgraph.qname(p).split(":")[1],
+                fontsize="9pt",
+                arrowsize=.66
             )
         )
 
@@ -100,16 +121,19 @@ def nary_nodes_edges(rdfgraph, uri, dotgraph):
     nodes = []
     for prop in properties:
         if prop[0] in FOCUS_PROPERTIES and resourceType(tgraph,prop[1]) in RELATIONS:
-            #print prop
-            n = pydot.Node( rdfgraph.qname(prop[1]).encode('utf-8'),
+            n = pydot.Node( rdfgraph.qname(prop[1]),
                         focus=True,
-                        label=rdfgraph.qname(prop[1]).encode('utf-8')
+                        label=rdfgraph.qname(prop[1]),
+                        height='0',
+                        fontsize='12'
                        )
             nodes.append(n)
         elif resourceType(tgraph,prop[1]) in RELATIONS:
-            n = pydot.Node( rdfgraph.qname(prop[1]).encode('utf-8'),
-                        label=rdfgraph.qname(prop[1]).encode('utf-8'),
-                        rdfprop=str(rdfgraph.qname(prop[0])).split(":")[1]
+            n = pydot.Node( rdfgraph.qname(prop[1]),
+                        label=rdfgraph.qname(prop[1]),
+                        rdfprop=str(rdfgraph.qname(prop[0])).split(":")[1],
+                        height='0',
+                        fontsize='12'
                        )
             nodes.append(n)
                             
@@ -128,11 +152,13 @@ def nary_nodes_edges(rdfgraph, uri, dotgraph):
             pydot.Edge(
                 (node, focus_node[0]),
                 taillabel=node.get_attributes()['rdfprop'],
-                fontsize="9pt"
+                fontsize="9pt",
+                arrowsize=.66
             )
         )
 
 ###### Generate the Dot Graph ######
+
 for sub in tgraph.subjects():
 #     if resourceType(tgraph,sub) == NARYRELATION:
 #         nary_nodes_edges(tgraph, sub, d)
@@ -148,19 +174,34 @@ for sub in tgraph.subjects():
             
 ##### manipulate dotgraph after generating: color nodes and set other properties:
 for x in d.get_edges():
-    if x.get_taillabel() in ['hostageGiver','pledgeGiver']:
+    x.set_minlen(1.5)
+    x.set_labeldistance('2')
+    x.set_labelangle('0')
+    if x.get_taillabel() in ['hostageGiver','hostageHolder','pledgeGiver']:
         n = d.get_node(x.get_source())[0]
         n.set_style("filled")
-        n.set_fillcolor("#cc99cc")
+        n.set_fillcolor("#99cccc")
         n = d.get_node(x.get_destination())[0]
         n.set_style("filled")
         n.set_fillcolor("red")
     if x.get_taillabel() in ['custodyHolder','hostageHolder']:
-        n = d.get_node(x.get_source())[0]
-        n.set_style("filled")
-        n.set_fillcolor("#99cccc")
+        x.set_fontcolor("#088000")
+    if x.get_taillabel() in ['pledgeGiver','hostageGiver']:
+        x.set_fontcolor("#880000")
+
+# d.get_node("Henry_III")[0].set_fillcolor("#ff9500")
+# d.set_comment("gives or recieves hostages or pledges")
+# d.add_edge(pydot.Edge("Henry_III", "Ralph_fitz_Nicholas", color="blue", label="steward of the household"))
+d.add_edge(pydot.Edge("Henry_III", "Segrave_Stephen_d_1241", color="blue", label="justiciar"))
+# d.add_edge(pydot.Edge("Henry_III", "Peter_fitz_Herbert", color="blue", label="tenant in chief"))
+# d.add_edge(pydot.Edge("Henry_III", "Corbet_Thomas", color="blue", label="tenant in chief"))
+d.add_edge(pydot.Edge("Henry_III", "Mortimer_Ralph_d_1247", color="blue", label="tenant in chief"))
+# d.add_edge(pydot.Edge("Henry_III", "Hugh_Despenser", color="blue", label="tenant in chief"))
+# d.add_edge(pydot.Edge("Henry_III", "Lacy_Walter_de_d_1241", color="blue", label="tenant in chief"))
+# d.add_edge(pydot.Edge("Henry_III", "Engelard_de_Cigogné", color="blue", label="mercenary captain"))
+
 
 #### Output the dotgraph to string or dot or svg ####
 #print d.to_string()
-d.write_dot('/Users/jjc/Desktop/propgraph.dot', prog='dot')
-#d.write_svg('/Users/jjc/Desktop/propgraph.svg')
+d.write_dot('/Users/jjc/ComputerInfo/Python/pythonCourse/HARE/propgraph-ralph.dot', prog='dot')
+#d.write_svg('/Users/jjc/ComputerInfo/Python/pythonCourse/HARE/propgraph.svg')
